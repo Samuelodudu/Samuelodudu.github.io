@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>REOS Operations Dashboard</title>
+<script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:#0B1120;color:#DFE6EF}
+::-webkit-scrollbar{width:6px}::-webkit-scrollbar-track{background:#0B1120}::-webkit-scrollbar-thumb{background:#253650;border-radius:3px}
+option{background:#162032;color:#DFE6EF}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const{useState,useEffect}=React;
+const A="#C9A84C",BG="#0B1120",SB="#0E1A2D",CD="#162032",BR="#253650",TX="#DFE6EF",MU="#7A91A8",GN="#4ADE80",WN="#FCD34D",RD="#F87171";
+const inp={background:BG,border:`1px solid ${BR}`,borderRadius:8,padding:"10px 14px",color:TX,fontSize:14,outline:"none",width:"100%",boxSizing:"border-box",fontFamily:"inherit"};
+const card={background:CD,border:`1px solid ${BR}`,borderRadius:12,padding:"20px 24px"};
+const Ic=({d,size=16,style={}})=><svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={style}>{(Array.isArray(d)?d:[d]).map((p,i)=><path key={i} d={p}/>)}</svg>;
+const IG=({size})=><Ic size={size} d={["M3 3h7v7H3z","M14 3h7v7h-7z","M3 14h7v7H3z","M14 14h7v7h-7z"]}/>;
+const IU=({size})=><Ic size={size} d={["M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2","M23 21v-2a4 4 0 0 0-3-3.87","M9 7a4 4 0 1 0 0 8 4 4 0 0 0 0-8z","M16 3.13a4 4 0 0 1 0 7.75"]}/>;
+const IF=({size,style})=><Ic size={size} style={style} d={["M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z","M14 2v6h6","M16 13H8","M16 17H8","M10 9H8"]}/>;
+const IS=({size})=><Ic size={size} d={["M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16z","M21 21l-4.35-4.35"]}/>;
+const IB=({size})=><Ic size={size} d={["M4 19.5A2.5 2.5 0 0 1 6.5 17H20","M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"]}/>;
+const IP=({size})=><Ic size={size} d={["M12 5v14","M5 12h14"]}/>;
+const IX=({size})=><Ic size={size} d={["M18 6L6 18","M6 6l12 12"]}/>;
+const ICp=({size})=><Ic size={size} d={["M20 9H11a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h9a2 2 0 0 0 2-2v-9a2 2 0 0 0-2-2z","M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"]}/>;
+const ICh=({size})=><Ic size={size} d="M20 6L9 17l-5-5"/>;
+const ITr=({size})=><Ic size={size} d={["M3 6h18","M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6","M10 11v6","M14 11v6","M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"]}/>;
+const IE=({size})=><Ic size={size} d={["M1 12S5 5 12 5s11 7 11 7-4 7-11 7S1 12 1 12z","M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6z"]}/>;
+const IA=({size})=><Ic size={size} d={["M19 12H5","M12 19l-7-7 7-7"]}/>;
+const ID=({size})=><Ic size={size} d={["M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4","M7 10l5 5 5-5","M12 15V3"]}/>;
+const Btn=({children,onClick,variant="primary",style={},disabled})=><button disabled={disabled} onClick={onClick} style={{background:variant==="primary"?A:"transparent",color:variant==="primary"?"#0B0600":TX,border:variant==="ghost"?`1px solid ${BR}`:"none",borderRadius:8,padding:"10px 20px",fontWeight:700,fontSize:14,cursor:disabled?"not-allowed":"pointer",display:"inline-flex",alignItems:"center",gap:8,fontFamily:"inherit",opacity:disabled?0.6:1,...style}}>{children}</button>;
+const Lbl=({children})=><label style={{fontSize:11,color:MU,fontWeight:700,letterSpacing:"0.08em",textTransform:"uppercase",marginBottom:6,display:"block"}}>{children}</label>;
+const SBadge=({s})=>{const m={Active:[GN,"#052e16"],Pending:[WN,"#1a1200"],Completed:["#818CF8","#0f0b2e"],Paused:[RD,"#1c0808"]};const[c,b]=m[s]||m.Active;return <span style={{color:c,background:b,padding:"3px 10px",borderRadius:20,fontSize:11,fontWeight:700}}>{s.toUpperCase()}</span>;};
+
+const mkPDF=({title,subtitle,sections,filename})=>{
+  const{jsPDF}=window.jspdf;
+  const doc=new jsPDF({orientation:"portrait",unit:"mm",format:"a4"});
+  const PW=210,PH=297,ML=20,MR=20,MT=64,MB=20,CW=PW-ML-MR;
+  const GO=[201,168,76],DK=[11,17,32],D2=[22,32,50],LT=[223,230,239],MD=[122,145,168];
+  let y=MT;
+  const chk=(n=10)=>{if(y+n>PH-MB){doc.addPage();hdr();y=MT;}};
+  const hdr=()=>{
+    doc.setFillColor(...DK);doc.rect(0,0,PW,52,"F");
+    doc.setFillColor(...GO);doc.rect(0,52,PW,2,"F");
+    doc.setTextColor(...GO);doc.setFontSize(22);doc.setFont("helvetica","bold");doc.text("REOS",ML,22);
+    doc.setTextColor(...LT);doc.setFontSize(9);doc.setFont("helvetica","normal");doc.text("OPERATIONS DASHBOARD",ML+24,22);
+    doc.setFontSize(16);doc.setFont("helvetica","bold");doc.setTextColor(...LT);doc.text(title,ML,38);
+    if(subtitle){doc.setFontSize(9);doc.setFont("helvetica","normal");doc.setTextColor(...MD);doc.text(subtitle.slice(0,80),ML,47);}
+    const ds=new Date().toLocaleDateString("en-NG",{year:"numeric",month:"long",day:"numeric"});
+    doc.setTextColor(...MD);doc.setFontSize(8);doc.text(ds,PW-MR-doc.getTextWidth(ds),47);
+  };
+  hdr();
+  for(const s of sections){
+    if(s.type==="heading"){chk(16);doc.setFillColor(...D2);doc.rect(ML,y,CW,9,"F");doc.setFillColor(...GO);doc.rect(ML,y,3,9,"F");doc.setTextColor(...GO);doc.setFontSize(9);doc.setFont("helvetica","bold");doc.text(s.text.toUpperCase(),ML+7,y+6);y+=15;}
+    else if(s.type==="body"){doc.setFontSize(10);const ls=doc.splitTextToSize(s.text,CW);doc.setFont("helvetica","normal");doc.setTextColor(...LT);for(const l of ls){chk(6);doc.text(l,ML,y);y+=5.5;}y+=4;}
+    else if(s.type==="step"){chk(28);doc.setFillColor(...D2);doc.roundedRect(ML,y,CW,2,0,0,"F");doc.setFillColor(...GO);doc.circle(ML+6,y+8,5,"F");doc.setTextColor(...DK);doc.setFontSize(10);doc.setFont("helvetica","bold");doc.text(String(s.num),ML+6,y+11,{align:"center"});doc.setTextColor(...LT);doc.setFontSize(11);doc.text(s.title,ML+15,y+9);let dy=y+16;if(s.desc){const ls=doc.splitTextToSize(s.desc,CW-16);doc.setFont("helvetica","normal");doc.setFontSize(9);doc.setTextColor(...MD);for(const l of ls){chk(5);doc.text(l,ML+15,dy);dy+=4.5;}}if(s.owner){doc.setTextColor(...GO);doc.setFontSize(8);doc.text(`Owner: ${s.owner}`,ML+15,dy+2);dy+=6;}y=dy+6;}
+    else if(s.type==="kv"){chk(8);doc.setFontSize(9);doc.setFont("helvetica","normal");doc.setTextColor(...MD);doc.text(s.key+":",ML,y);doc.setTextColor(...LT);doc.setFont("helvetica","bold");doc.text(s.value||"—",ML+42,y);y+=7;}
+    else if(s.type==="spacer"){y+=s.h||8;}
+  }
+  const tp=doc.getNumberOfPages();
+  for(let p=1;p<=tp;p++){doc.setPage(p);doc.setFillColor(...D2);doc.rect(0,PH-12,PW,12,"F");doc.setTextColor(...MD);doc.setFontSize(7);doc.setFont("helvetica","normal");doc.text("REOS Operations Dashboard  ·  Confidential",ML,PH-4.5);doc.text(`Page ${p} of ${tp}`,PW-MR,PH-4.5,{align:"right"});}
+  doc.save(`${filename}.pdf`);
+};
+
+const AQS=[
+  {cat:"Client Management",q:"How do you currently track your active clients and projects?",opts:["No system — it's all in my head","Scattered notes and chats","Basic spreadsheet","Organised spreadsheet with regular updates","A dedicated tool or CRM system"]},
+  {cat:"Client Management",q:"How quickly do you typically respond to new leads or inquiries?",opts:["No consistent follow-up","Only when I remember","Within a week","Within 48 hours","Same day with a structured system"]},
+  {cat:"Financial Tracking",q:"How do you track income and outstanding payments?",opts:["I don't track it formally","I recall transactions mentally","Bank statements at month end","Basic spreadsheet","An invoice tracker with live payment status"]},
+  {cat:"Financial Tracking",q:"Do you have a standard, documented pricing structure?",opts:["No — I quote differently every time","Rough estimate I keep in my head","Informal rates I quote verbally","Written rates, not always followed","A clear rate card shared with every client"]},
+  {cat:"Processes & SOPs",q:"Are your core business processes documented anywhere?",opts:["Nothing is documented","A few random notes somewhere","Some processes partially written","Most key processes are documented","Full SOPs with owners and clear standards"]},
+  {cat:"Processes & SOPs",q:"If you were unavailable for a week, could your business keep running?",opts:["Everything would stop completely","Major disruption across the board","Partial operations only","Most things would continue fine","Yes — systems handle it"]},
+  {cat:"Client Communication",q:"How do clients receive updates on their projects?",opts:["They have to ask — no proactive updates","Informally via WhatsApp whenever","Regular but unstructured messages","Scheduled check-ins at agreed intervals","Structured reports with clear status updates"]},
+  {cat:"Client Communication",q:"Do you use formal proposals and contracts for every client?",opts:["No — verbal agreement only","Rarely use any written documents","Basic document used sometimes","Proposal but rarely a contract","Both proposal and signed contract always"]},
+  {cat:"Growth & Pipeline",q:"How consistently are you generating new leads?",opts:["No active lead generation","Occasional referrals only","Some activity but inconsistent","Regular activity but not systematic","Clear pipeline with consistent inbound flow"]},
+  {cat:"Growth & Pipeline",q:"Do you have a defined niche or ideal client profile documented?",opts:["No — I work with anyone who pays","Vague idea I keep in my head","Partly defined, not fully","Mostly clear but not documented","Fully defined, documented, and actively used"]},
+];
+
+function Home({clients,sopCount,setPage}){
+  const active=clients.filter(c=>c.status==="Active").length;
+  const done=clients.filter(c=>c.status==="Completed").length;
+  return(
+    <div style={{display:"flex",flexDirection:"column",gap:28}}>
+      <div><div style={{fontSize:26,fontWeight:800,color:TX,marginBottom:4}}>Good day, Samuel 👋</div><div style={{color:MU,fontSize:15}}>Here's a snapshot of your operations today.</div></div>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:16}}>
+        {[{l:"Total Clients",v:clients.length,s:"All time"},{l:"Active Projects",v:active,s:"In progress",a:true},{l:"Completed",v:done,s:"Projects done"},{l:"SOPs Built",v:sopCount,s:"Documented"}].map(x=>(
+          <div key={x.l} style={{...card,display:"flex",flexDirection:"column",gap:4}}>
+            <div style={{fontSize:11,color:MU,letterSpacing:"0.06em",textTransform:"uppercase"}}>{x.l}</div>
+            <div style={{fontSize:36,fontWeight:800,color:x.a?A:TX}}>{x.v}</div>
+            <div style={{fontSize:12,color:MU}}>{x.s}</div>
+          </div>
+        ))}
+      </div>
+      <div style={{fontSize:15,fontWeight:700,color:TX}}>Modules</div>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}}>
+        {[{id:"clients",icon:<IU size={28}/>,t:"Client Manager",d:"Track all clients, projects, deadlines, and fees in one place."},{id:"proposals",icon:<IF size={28}/>,t:"Proposal Generator",d:"Generate AI proposals and export them as branded PDFs instantly."},{id:"audit",icon:<IS size={28}/>,t:"Ops Audit Tool",d:"Answer 10 questions and receive a personalised AI operations report."},{id:"sops",icon:<IB size={28}/>,t:"SOP Builder",d:"Document your processes and export your operations manual as PDF."}].map(m=>(
+          <div key={m.id} style={{...card,cursor:"pointer"}} onClick={()=>setPage(m.id)}>
+            <div style={{color:A,marginBottom:14}}>{m.icon}</div>
+            <div style={{fontWeight:700,color:TX,fontSize:16,marginBottom:6}}>{m.t}</div>
+            <div style={{color:MU,fontSize:13,lineHeight:1.7,marginBottom:20}}>{m.d}</div>
+            <div style={{color:A,fontSize:13,fontWeight:700}}>Open module →</div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function Clients({clients,setClients}){
+  const[filter,setFilter]=useState("All");
+  const[showAdd,setShowAdd]=useState(false);
+  const[viewing,setViewing]=useState(null);
+  const blank={name:"",business:"",project:"",status:"Active",deadline:"",email:"",fee:"",notes:""};
+  const[form,setForm]=useState(blank);
+  const filtered=filter==="All"?clients:clients.filter(c=>c.status===filter);
+  const save=()=>{if(!form.name)return;setClients(p=>[...p,{...form,id:Date.now()}]);setForm(blank);setShowAdd(false);};
+  const F=({k,l,t="text",full})=><div style={{gridColumn:full?"1/-1":undefined}}><Lbl>{l}</Lbl><input style={inp} type={t} value={form[k]} onChange={e=>setForm(p=>({...p,[k]:e.target.value}))} placeholder={l}/></div>;
+  return(
+    <div style={{display:"flex",flexDirection:"column",gap:24}}>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:16}}>
+        {["All","Active","Pending","Completed"].map(s=>(
+          <div key={s} style={{...card,padding:"14px 20px",cursor:"pointer",borderColor:filter===s?A:BR,background:filter===s?"#1e1800":CD,textAlign:"center"}} onClick={()=>setFilter(s)}>
+            <div style={{fontSize:26,fontWeight:800,color:filter===s?A:TX}}>{s==="All"?clients.length:clients.filter(c=>c.status===s).length}</div>
+            <div style={{fontSize:12,color:MU,marginTop:2}}>{s==="All"?"Total":s}</div>
+          </div>
+        ))}
+      </div>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+        <div style={{fontSize:16,fontWeight:700,color:TX}}>Client List</div>
+        <Btn onClick={()=>setShowAdd(true)}><IP size={16}/> Add Client</Btn>
+      </div>
+      <div style={{display:"flex",flexDirection:"column",gap:10}}>
+        {filtered.map(c=>(
+          <div key={c.id} style={{...card,display:"flex",alignItems:"center",gap:20,cursor:"pointer"}} onClick={()=>setViewing(c)}>
+            <div style={{width:44,height:44,borderRadius:"50%",background:"#1e1800",border:`2px solid ${A}`,display:"flex",alignItems:"center",justifyContent:"center",color:A,fontWeight:800,fontSize:14,flexShrink:0}}>{c.name.split(" ").map(n=>n[0]).join("").slice(0,2).toUpperCase()}</div>
+            <div style={{flex:1,minWidth:0}}><div style={{fontWeight:700,color:TX}}>{c.name}</div><div style={{color:MU,fontSize:13}}>{c.business} · {c.project}</div></div>
+            <div style={{textAlign:"right",flexShrink:0}}><div style={{color:A,fontWeight:700,fontSize:14,marginBottom:4}}>{c.fee}</div><SBadge s={c.status}/></div>
+            <div style={{color:MU,fontSize:13,flexShrink:0}}>{c.deadline||"—"}</div>
+            <button style={{color:RD,background:"none",border:"none",cursor:"pointer",padding:8}} onClick={e=>{e.stopPropagation();setClients(p=>p.filter(x=>x.id!==c.id));}}><ITr size={15}/></button>
+          </div>
+        ))}
+        {filtered.length===0&&<div style={{...card,textAlign:"center",color:MU,padding:"40px 0"}}>No clients yet.</div>}
+      </div>
+      {showAdd&&<div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.75)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:999}}>
+        <div style={{...card,width:580,maxHeight:"90vh",overflowY:"auto"}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:24}}><div style={{fontSize:18,fontWeight:700,color:TX}}>Add New Client</div><button style={{background:"none",border:"none",color:MU,cursor:"pointer"}} onClick={()=>setShowAdd(false)}><IX size={20}/></button></div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
+            <F k="name" l="Client Full Name"/><F k="business" l="Business Name"/>
+            <F k="project" l="Project / Service" full/><F k="email" l="Email Address" t="email"/>
+            <F k="fee" l="Project Fee"/><F k="deadline" l="Deadline" t="date"/>
+            <div><Lbl>Status</Lbl><select style={inp} value={form.status} onChange={e=>setForm(p=>({...p,status:e.target.value}))}>{["Active","Pending","Completed","Paused"].map(s=><option key={s}>{s}</option>)}</select></div>
+            <div style={{gridColumn:"1/-1"}}><Lbl>Notes</Lbl><textarea style={{...inp,height:80,resize:"none"}} value={form.notes} onChange={e=>setForm(p=>({...p,notes:e.target.value}))} placeholder="Any notes..."/></div>
+          </div>
+          <div style={{display:"flex",gap:12,justifyContent:"flex-end",marginTop:24}}><Btn variant="ghost" onClick={()=>setShowAdd(false)}>Cancel</Btn><Btn onClick={save}>Save Client</Btn></div>
+        </div>
+      </div>}
+      {viewing&&<div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.75)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:999}}>
+        <div style={{...card,width:520}}>
+          <div style={{display:"flex",justifyContent:"space-between",marginBottom:20}}>
+            <div><div style={{fontSize:20,fontWeight:800,color:TX}}>{viewing.name}</div><div style={{color:MU,fontSize:14}}>{viewing.business}</div></div>
+            <button style={{background:"none",border:"none",color:MU,cursor:"pointer"}} onClick={()=>setViewing(null)}><IX size={20}/></button>
+          </div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:16}}>
+            {[["Project",viewing.project],["Fee",viewing.fee],["Deadline",viewing.deadline],["Email",viewing.email]].map(([l,v])=>(
+              <div key={l} style={{background:BG,borderRadius:8,padding:"12px 16px"}}><div style={{fontSize:11,color:MU,textTransform:"uppercase",marginBottom:4}}>{l}</div><div style={{color:TX,fontWeight:600,fontSize:14}}>{v||"—"}</div></div>
+            ))}
+          </div>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}><SBadge s={viewing.status}/>{viewing.notes&&<div style={{color:MU,fontSize:13,fontStyle:"italic"}}>{viewing.notes}</div>}</div>
+        </div>
+      </div>}
+    </div>
+  );
+}
+
+function Proposals(){
+  const[form,setForm]=useState({clientName:"",clientBusiness:"",serviceTitle:"",scope:"",timeline:"",amount:"",paymentTerms:"50% upfront, 50% on completion",yourName:"Samuel Odudu",yourBusiness:"REOS Consulting"});
+  const[result,setResult]=useState("");
+  const[loading,setLoading]=useState(false);
+  const[copied,setCopied]=useState(false);
+  const[exporting,setExporting]=useState(false);
+  const gen=async()=>{
+    if(!form.clientName||!form.serviceTitle)return;
+    setLoading(true);
+    try{
+      const r=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:1000,system:"You are a professional business proposal writer for a Nigerian consulting firm. Write formal, confident proposals. Use UPPERCASE section headers followed by a colon. No markdown, no asterisks. Under 600 words.",messages:[{role:"user",content:`Write a professional consulting proposal:\nClient: ${form.clientName} (${form.clientBusiness})\nService: ${form.serviceTitle}\nScope: ${form.scope}\nTimeline: ${form.timeline}\nFee: ${form.amount}\nPayment Terms: ${form.paymentTerms}\nPrepared by: ${form.yourName}, ${form.yourBusiness}`}]})});
+      const d=await r.json();setResult(d.content?.map(b=>b.text||"").join("")||"Could not generate.");
+    }catch{setResult("Network error. Please try again.");}
+    setLoading(false);
+  };
+  const copy=()=>{navigator.clipboard.writeText(result);setCopied(true);setTimeout(()=>setCopied(false),2000);};
+  const pdf=()=>{
+    if(!result)return;setExporting(true);
+    try{
+      const ls=result.split("\n"),secs=[];let buf=[];
+      const fl=()=>{if(buf.length){secs.push({type:"body",text:buf.join("\n")});buf=[];}};
+      for(const l of ls){const t=l.trim();if(!t){buf.push("");continue;}if(/^[A-Z][A-Z\s&\/]{3,}:/.test(t)){fl();secs.push({type:"heading",text:t.replace(/:$/,"")});}else{buf.push(t);}}fl();
+      const kvs=[{type:"kv",key:"Client",value:`${form.clientName}${form.clientBusiness?" · "+form.clientBusiness:""}`},{type:"kv",key:"Service",value:form.serviceTitle},form.timeline&&{type:"kv",key:"Timeline",value:form.timeline},form.amount&&{type:"kv",key:"Investment",value:form.amount},form.paymentTerms&&{type:"kv",key:"Payment Terms",value:form.paymentTerms}].filter(Boolean);
+      mkPDF({title:form.serviceTitle||"Consulting Proposal",subtitle:`For ${form.clientName} · By ${form.yourName}, ${form.yourBusiness}`,sections:[{type:"heading",text:"Engagement Details"},...kvs,{type:"spacer",h:6},...secs],filename:`REOS-Proposal-${(form.clientName||"Client").replace(/\s+/g,"-")}`});
+    }catch(e){console.error(e);}
+    setExporting(false);
+  };
+  const Fl=({k,l,t="text",full,area})=><div style={{gridColumn:full?"1/-1":undefined}}><Lbl>{l}</Lbl>{area?<textarea style={{...inp,height:80,resize:"none"}} value={form[k]} onChange={e=>setForm(p=>({...p,[k]:e.target.value}))} placeholder={l}/>:<input style={inp} type={t} value={form[k]} onChange={e=>setForm(p=>({...p,[k]:e.target.value}))} placeholder={l}/>}</div>;
+  return(
+    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:24,alignItems:"start"}}>
+      <div style={card}>
+        <div style={{fontSize:16,fontWeight:700,color:TX,marginBottom:20}}>Proposal Details</div>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
+          <Fl k="clientName" l="Client Name"/><Fl k="clientBusiness" l="Client Business"/>
+          <Fl k="serviceTitle" l="Service / Package Title" full/><Fl k="scope" l="Scope of Work" full area/>
+          <Fl k="timeline" l="Timeline"/><Fl k="amount" l="Investment Amount"/>
+          <Fl k="paymentTerms" l="Payment Terms" full/><Fl k="yourName" l="Your Name"/><Fl k="yourBusiness" l="Your Business"/>
+        </div>
+        <Btn onClick={gen} disabled={loading} style={{width:"100%",justifyContent:"center",marginTop:20}}>{loading?"Generating...":<><IF size={16}/> Generate Proposal</>}</Btn>
+      </div>
+      <div style={card}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
+          <div style={{fontSize:16,fontWeight:700,color:TX}}>Generated Proposal</div>
+          {result&&<div style={{display:"flex",gap:8}}>
+            <Btn variant="ghost" onClick={copy} style={{padding:"6px 14px",fontSize:12}}>{copied?<><ICh size={13}/> Copied</>:<><ICp size={13}/> Copy</>}</Btn>
+            <Btn variant="ghost" onClick={pdf} disabled={exporting} style={{padding:"6px 14px",fontSize:12}}><ID size={13}/>{exporting?"Exporting...":"Export PDF"}</Btn>
+          </div>}
+        </div>
+        {result?<pre style={{color:TX,fontSize:13,lineHeight:1.9,whiteSpace:"pre-wrap",fontFamily:"inherit",margin:0}}>{result}</pre>:<div style={{textAlign:"center",padding:"60px 20px",color:MU}}><IF size={40} style={{marginBottom:16,color:BR}}/><div style={{fontSize:15}}>Fill in the details and click Generate.</div></div>}
+      </div>
+    </div>
+  );
+}
+
+function Audit(){
+  const[step,setStep]=useState("intro");
+  const[qIdx,setQIdx]=useState(0);
+  const[ans,setAns]=useState({});
+  const[result,setResult]=useState("");
+  const[exp,setExp]=useState(false);
+  const pick=async(i)=>{
+    const na={...ans,[qIdx]:i};setAns(na);
+    if(qIdx<AQS.length-1){setQIdx(x=>x+1);return;}
+    setStep("loading");
+    try{
+      const fmt=AQS.map((q,j)=>`Q${j+1} [${q.cat}]: ${q.q}\nAnswer: ${q.opts[na[j]??0]}`).join("\n\n");
+      const r=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:1000,system:"You are an expert Nigerian business operations consultant. Format: OVERALL SCORE: X/100\n[one-line verdict]\n\nYOUR 3 BIGGEST GAPS:\n1.\n2.\n3.\n\n3 IMMEDIATE ACTIONS:\n1.\n2.\n3.\n\nNo markdown. Under 400 words. Direct and specific.",messages:[{role:"user",content:`Business audit:\n\n${fmt}`}]})});
+      const d=await r.json();setResult(d.content?.map(b=>b.text||"").join("")||"Could not generate.");
+    }catch{setResult("Error. Please try again.");}
+    setStep("results");
+  };
+  const reset=()=>{setStep("intro");setQIdx(0);setAns({});setResult("");};
+  const pdf=()=>{
+    setExp(true);
+    try{
+      const ls=result.split("\n"),secs=[];let buf=[];
+      const fl=()=>{if(buf.length){secs.push({type:"body",text:buf.join("\n")});buf=[];}};
+      for(const l of ls){const t=l.trim();if(!t){buf.push("");continue;}if(/^(OVERALL SCORE|YOUR 3|3 IMMEDIATE)/i.test(t)){fl();secs.push({type:"heading",text:t});}else{buf.push(t);}}fl();
+      mkPDF({title:"Operations Audit Report",subtitle:`Samuel Odudu · REOS Consulting · ${new Date().toLocaleDateString("en-NG")}`,sections:[{type:"heading",text:"Audit Results"},...secs,{type:"spacer",h:10},{type:"heading",text:"Your Responses"},...AQS.map((q,i)=>({type:"kv",key:q.cat.slice(0,20),value:q.opts[ans[i]??0]}))],filename:"REOS-Ops-Audit-Report"});
+    }catch(e){console.error(e);}
+    setExp(false);
+  };
+  if(step==="intro")return(
+    <div style={{maxWidth:640,margin:"0 auto"}}>
+      <div style={{...card,textAlign:"center",padding:"48px 40px"}}>
+        <div style={{color:A,marginBottom:16,display:"flex",justifyContent:"center"}}><IS size={44}/></div>
+        <div style={{fontSize:24,fontWeight:800,color:TX,marginBottom:12}}>Business Operations Audit</div>
+        <div style={{color:MU,fontSize:15,lineHeight:1.8,marginBottom:32}}>10 questions. 5 minutes. A precise picture of where your operations stand — and exactly what to fix first.</div>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10,marginBottom:32}}>
+          {["Client Management","Financial Tracking","Processes & SOPs","Communication","Growth & Pipeline","AI Report + PDF"].map(t=><div key={t} style={{background:BG,borderRadius:8,padding:"12px",fontSize:12,color:MU,border:`1px solid ${BR}`}}>{t}</div>)}
+        </div>
+        <Btn onClick={()=>setStep("questions")} style={{padding:"14px 48px",fontSize:16}}>Begin Audit →</Btn>
+      </div>
+    </div>
+  );
+  if(step==="loading")return(
+    <div style={{maxWidth:640,margin:"0 auto",...card,textAlign:"center",padding:"80px 40px"}}>
+      <div style={{color:A,display:"flex",justifyContent:"center",marginBottom:16}}><IS size={40}/></div>
+      <div style={{fontSize:18,fontWeight:700,color:TX,marginBottom:8}}>Analysing your business...</div>
+      <div style={{color:MU}}>REOS AI is preparing your report.</div>
+    </div>
+  );
+  if(step==="questions"){
+    const q=AQS[qIdx];
+    return(
+      <div style={{maxWidth:680,margin:"0 auto",display:"flex",flexDirection:"column",gap:20}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+          <div style={{fontSize:12,color:A,fontWeight:700,letterSpacing:"0.08em",textTransform:"uppercase"}}>{q.cat}</div>
+          <div style={{fontSize:13,color:MU}}>{qIdx+1} / {AQS.length}</div>
+        </div>
+        <div style={{height:4,background:BR,borderRadius:2}}><div style={{height:4,background:A,borderRadius:2,width:`${(qIdx/AQS.length)*100}%`,transition:"width 0.3s"}}/></div>
+        <div style={{...card,padding:"32px"}}>
+          <div style={{fontSize:19,fontWeight:700,color:TX,lineHeight:1.5,marginBottom:28}}>{q.q}</div>
+          <div style={{display:"flex",flexDirection:"column",gap:10}}>
+            {q.opts.map((opt,i)=><button key={i} style={{background:BG,border:`1px solid ${ans[qIdx]===i?A:BR}`,borderRadius:10,padding:"14px 20px",color:ans[qIdx]===i?A:TX,textAlign:"left",cursor:"pointer",fontSize:14,fontFamily:"inherit"}} onClick={()=>pick(i)}><span style={{color:MU,fontSize:12,marginRight:10}}>{i+1}.</span>{opt}</button>)}
+          </div>
+        </div>
+        {qIdx>0&&<Btn variant="ghost" onClick={()=>setQIdx(i=>i-1)} style={{alignSelf:"flex-start"}}><IA size={14}/> Back</Btn>}
+      </div>
+    );
+  }
+  return(
+    <div style={{maxWidth:700,margin:"0 auto",display:"flex",flexDirection:"column",gap:20}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+        <div style={{fontSize:20,fontWeight:800,color:TX}}>Your Operations Report</div>
+        <div style={{display:"flex",gap:10}}>
+          <Btn variant="ghost" onClick={pdf} disabled={exp} style={{fontSize:13}}><ID size={14}/>{exp?"Exporting...":"Export PDF"}</Btn>
+          <Btn variant="ghost" onClick={reset} style={{fontSize:13}}>Retake</Btn>
+        </div>
+      </div>
+      <div style={{...card,padding:"32px"}}><pre style={{color:TX,fontSize:14,lineHeight:1.9,whiteSpace:"pre-wrap",fontFamily:"inherit",margin:0}}>{result}</pre></div>
+      <div style={{...card,background:"#1a1400",borderColor:A}}><div style={{fontSize:14,color:A,fontWeight:700,marginBottom:6}}>Ready to close these gaps?</div><div style={{fontSize:13,color:MU,lineHeight:1.7}}>Use the SOP Builder to document your processes, and the Client Manager to track clients.</div></div>
+    </div>
+  );
+}
+
+function SOPs({sops,setSops}){
+  const[view,setView]=useState("list");
+  const[sel,setSel]=useState(null);
+  const[draft,setDraft]=useState({title:"",dept:"",owner:"Samuel Odudu",steps:[]});
+  const[ns,setNs]=useState({title:"",desc:"",owner:""});
+  const[exp,setExp]=useState(false);
+  const addStep=()=>{if(!ns.title)return;setDraft(p=>({...p,steps:[...p.steps,{...ns,id:Date.now()}]}));setNs({title:"",desc:"",owner:""});};
+  const save=()=>{if(!draft.title)return;setSops(p=>[...p,{...draft,id:Date.now()}]);setDraft({title:"",dept:"",owner:"Samuel Odudu",steps:[]});setView("list");};
+  const expPDF=(sop)=>{
+    setExp(true);
+    try{mkPDF({title:sop.title,subtitle:`${sop.dept?sop.dept+"  ·  ":""}Owner: ${sop.owner}  ·  ${sop.steps.length} steps`,sections:[{type:"heading",text:"SOP Information"},{type:"kv",key:"Department",value:sop.dept||"General"},{type:"kv",key:"Owner",value:sop.owner},{type:"kv",key:"Total Steps",value:String(sop.steps.length)},{type:"spacer",h:8},{type:"heading",text:"Process Steps"},...sop.steps.map((s,i)=>({type:"step",num:i+1,title:s.title,desc:s.desc,owner:s.owner}))],filename:`REOS-SOP-${sop.title.replace(/\s+/g,"-")}`);}catch(e){console.error(e);}
+    setExp(false);
+  };
+  if(view==="builder")return(
+    <div style={{maxWidth:720,margin:"0 auto",display:"flex",flexDirection:"column",gap:20}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}><div style={{fontSize:18,fontWeight:700,color:TX}}>Build New SOP</div><Btn variant="ghost" onClick={()=>setView("list")} style={{fontSize:13}}><IA size={14}/> Back</Btn></div>
+      <div style={card}>
+        <div style={{fontSize:14,fontWeight:700,color:TX,marginBottom:16}}>SOP Details</div>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:14}}>
+          {[["title","SOP Title"],["dept","Department"],["owner","Owner"]].map(([k,l])=><div key={k}><Lbl>{l}</Lbl><input style={inp} value={draft[k]} onChange={e=>setDraft(p=>({...p,[k]:e.target.value}))} placeholder={l}/></div>)}
+        </div>
+      </div>
+      <div style={card}>
+        <div style={{fontSize:14,fontWeight:700,color:TX,marginBottom:16}}>Process Steps ({draft.steps.length})</div>
+        {draft.steps.map((s,i)=>(
+          <div key={s.id} style={{background:BG,borderRadius:8,padding:"14px 16px",marginBottom:10,display:"flex",gap:16,alignItems:"flex-start"}}>
+            <div style={{width:28,height:28,borderRadius:"50%",background:"#1e1800",border:`1px solid ${A}`,color:A,fontWeight:800,fontSize:13,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>{i+1}</div>
+            <div style={{flex:1}}><div style={{fontWeight:700,color:TX,fontSize:14}}>{s.title}</div><div style={{color:MU,fontSize:13,marginTop:2,lineHeight:1.6}}>{s.desc}</div>{s.owner&&<div style={{color:A,fontSize:12,marginTop:4}}>Owner: {s.owner}</div>}</div>
+            <button style={{background:"none",border:"none",color:RD,cursor:"pointer",padding:4}} onClick={()=>setDraft(p=>({...p,steps:p.steps.filter(x=>x.id!==s.id)}))}><IX size={16}/></button>
+          </div>
+        ))}
+        <div style={{background:BG,borderRadius:8,padding:"16px",border:`1px dashed ${BR}`}}>
+          <div style={{fontSize:13,color:MU,fontWeight:700,marginBottom:10}}>Add Step</div>
+          <div style={{display:"flex",flexDirection:"column",gap:10}}>
+            <input style={inp} value={ns.title} onChange={e=>setNs(p=>({...p,title:e.target.value}))} placeholder="Step title"/>
+            <textarea style={{...inp,height:64,resize:"none"}} value={ns.desc} onChange={e=>setNs(p=>({...p,desc:e.target.value}))} placeholder="Step description / instructions"/>
+            <input style={inp} value={ns.owner} onChange={e=>setNs(p=>({...p,owner:e.target.value}))} placeholder="Owner / responsible person"/>
+            <Btn onClick={addStep} style={{alignSelf:"flex-start"}}><IP size={14}/> Add Step</Btn>
+          </div>
+        </div>
+      </div>
+      <div style={{display:"flex",justifyContent:"flex-end",gap:12}}><Btn variant="ghost" onClick={()=>setView("list")}>Cancel</Btn><Btn onClick={save}><IB size={15}/> Save SOP</Btn></div>
+    </div>
+  );
+  if(view==="viewer"&&sel)return(
+    <div style={{maxWidth:720,margin:"0 auto",display:"flex",flexDirection:"column",gap:20}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+        <div><div style={{fontSize:22,fontWeight:800,color:TX}}>{sel.title}</div><div style={{color:MU,fontSize:13,marginTop:2}}>{sel.dept} · Owner: {sel.owner} · {sel.steps.length} steps</div></div>
+        <div style={{display:"flex",gap:10}}><Btn variant="ghost" onClick={()=>expPDF(sel)} disabled={exp} style={{fontSize:13}}><ID size={14}/>{exp?"Exporting...":"Export PDF"}</Btn><Btn variant="ghost" onClick={()=>setView("list")} style={{fontSize:13}}><IA size={14}/> Back</Btn></div>
+      </div>
+      <div style={{display:"flex",flexDirection:"column",gap:12}}>
+        {sel.steps.map((s,i)=>(
+          <div key={s.id} style={{...card,display:"flex",gap:20,alignItems:"flex-start"}}>
+            <div style={{width:36,height:36,borderRadius:"50%",background:"#1e1800",border:`2px solid ${A}`,color:A,fontWeight:800,fontSize:15,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>{i+1}</div>
+            <div style={{flex:1}}><div style={{fontWeight:700,color:TX,fontSize:15,marginBottom:6}}>{s.title}</div><div style={{color:MU,fontSize:14,lineHeight:1.7}}>{s.desc}</div>{s.owner&&<div style={{color:A,fontSize:12,marginTop:10,fontWeight:600}}>Owner: {s.owner}</div>}</div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+  return(
+    <div style={{display:"flex",flexDirection:"column",gap:20}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}><div style={{fontSize:16,fontWeight:700,color:TX}}>Standard Operating Procedures ({sops.length})</div><Btn onClick={()=>setView("builder")}><IP size={16}/> Create SOP</Btn></div>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(280px,1fr))",gap:16}}>
+        {sops.map(s=>(
+          <div key={s.id} style={{...card,cursor:"pointer"}} onClick={()=>{setSel(s);setView("viewer");}}>
+            <div style={{display:"flex",justifyContent:"space-between",marginBottom:14}}><div style={{background:"#1e1800",borderRadius:6,padding:"4px 10px",fontSize:11,color:A,fontWeight:700}}>SOP</div><button style={{background:"none",border:"none",color:MU,cursor:"pointer"}} onClick={e=>{e.stopPropagation();setSops(p=>p.filter(x=>x.id!==s.id));}}><ITr size={14}/></button></div>
+            <div style={{fontWeight:700,color:TX,fontSize:16,marginBottom:4}}>{s.title}</div>
+            <div style={{color:MU,fontSize:13,marginBottom:16}}>{s.dept} · {s.owner}</div>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}><div style={{color:MU,fontSize:12}}>{s.steps.length} steps</div><div style={{color:A,fontSize:12,fontWeight:700,display:"flex",alignItems:"center",gap:4}}><IE size={13}/> View & Export</div></div>
+          </div>
+        ))}
+        {sops.length===0&&<div style={{gridColumn:"1/-1",textAlign:"center",color:MU,padding:"48px 0"}}>No SOPs yet. Create your first one.</div>}
+      </div>
+    </div>
+  );
+}
+
+const NAV=[{id:"home",label:"Dashboard",Ic:IG},{id:"clients",label:"Client Manager",Ic:IU},{id:"proposals",label:"Proposals",Ic:IF},{id:"audit",label:"Ops Audit",Ic:IS},{id:"sops",label:"SOP Builder",Ic:IB}];
+
+const DEMO_CLIENTS=[
+  {id:1,name:"Adaeze Okonkwo",business:"AO Consulting",project:"Operations Overhaul",status:"Active",deadline:"2025-07-15",email:"adaeze@ao.com",fee:"NGN 350,000",notes:"Phase 2 starts June"},
+  {id:2,name:"Emeka Nwosu",business:"Nwosu Logistics",project:"SOPs & Staff Manual",status:"Completed",deadline:"2025-05-01",email:"emeka@nwosulg.com",fee:"NGN 200,000",notes:"Final report delivered"},
+  {id:3,name:"Chisom Eze",business:"CE Fashion House",project:"Brand Strategy",status:"Pending",deadline:"2025-08-30",email:"chisom@cefashion.ng",fee:"NGN 150,000",notes:"Contract sent, awaiting signature"},
+];
+const DEMO_SOPS=[{id:1,title:"Client Onboarding Process",dept:"Operations",owner:"Samuel Odudu",steps:[{id:1,title:"Send welcome email",desc:"Within 24 hours of the signed contract, send the welcome email template with next steps and access details.",owner:"Samuel Odudu"},{id:2,title:"Schedule kickoff call",desc:"Book a 60-minute kickoff call within the first week to align on goals, deliverables, and timeline.",owner:"Samuel Odudu"},{id:3,title:"Share onboarding questionnaire",desc:"Send the client questionnaire and request completion within 5 business days before the kickoff call.",owner:"Client"}]}];
+
+function usePersist(key,fallback){
+  const[val,setVal]=useState(()=>{try{const s=localStorage.getItem(key);return s?JSON.parse(s):fallback;}catch{return fallback;}});
+  const set=(v)=>{const next=typeof v==="function"?v(val):v;setVal(next);try{localStorage.setItem(key,JSON.stringify(next));}catch{}};
+  return[val,set];
+}
+
+function App(){
+  const[page,setPage]=useState("home");
+  const[clients,setClients]=usePersist("reos_clients",DEMO_CLIENTS);
+  const[sops,setSops]=usePersist("reos_sops",DEMO_SOPS);
+  const titles={home:"Dashboard",clients:"Client Manager",proposals:"Proposal Generator",audit:"Ops Audit Tool",sops:"SOP Builder"};
+  const date=new Date().toLocaleDateString("en-NG",{weekday:"long",year:"numeric",month:"long",day:"numeric"});
+  return(
+    <div style={{display:"flex",minHeight:"100vh",background:BG,fontFamily:"'Segoe UI',system-ui,sans-serif",color:TX}}>
+      <div style={{width:230,background:SB,borderRight:`1px solid ${BR}`,display:"flex",flexDirection:"column",flexShrink:0,position:"fixed",top:0,left:0,height:"100vh",zIndex:100}}>
+        <div style={{padding:"28px 24px 24px"}}><div style={{fontSize:24,fontWeight:900,color:A,letterSpacing:"-0.02em"}}>REOS</div><div style={{fontSize:9,color:MU,letterSpacing:"0.14em",textTransform:"uppercase",marginTop:2}}>Operations Dashboard</div></div>
+        <div style={{display:"flex",flexDirection:"column",flex:1}}>
+          {NAV.map(({id,label,Ic})=><button key={id} onClick={()=>setPage(id)} style={{display:"flex",alignItems:"center",gap:12,padding:"13px 24px",background:page===id?"#1e1800":"transparent",color:page===id?A:MU,border:"none",cursor:"pointer",width:"100%",textAlign:"left",fontSize:14,fontWeight:page===id?700:400,borderLeft:page===id?`3px solid ${A}`:"3px solid transparent",fontFamily:"inherit"}}><Ic size={16}/>{label}</button>)}
+        </div>
+        <div style={{padding:"20px 24px",borderTop:`1px solid ${BR}`}}><div style={{fontWeight:700,color:TX,fontSize:13}}>Samuel Odudu</div><div style={{color:MU,fontSize:12,marginTop:2}}>REOS Consulting</div></div>
+      </div>
+      <div style={{flex:1,display:"flex",flexDirection:"column",minWidth:0,marginLeft:230}}>
+        <div style={{padding:"18px 32px",borderBottom:`1px solid ${BR}`,display:"flex",justifyContent:"space-between",alignItems:"center",flexShrink:0,position:"sticky",top:0,background:BG,zIndex:50}}><div style={{fontSize:17,fontWeight:700,color:TX}}>{titles[page]}</div><div style={{fontSize:13,color:MU}}>{date}</div></div>
+        <div style={{flex:1,padding:"28px 32px",overflowY:"auto"}}>
+          {page==="home"&&<Home clients={clients} sopCount={sops.length} setPage={setPage}/>}
+          {page==="clients"&&<Clients clients={clients} setClients={setClients}/>}
+          {page==="proposals"&&<Proposals/>}
+          {page==="audit"&&<Audit/>}
+          {page==="sops"&&<SOPs sops={sops} setSops={setSops}/>}
+        </div>
+      </div>
+    </div>
+  );
+}
+ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+</script>
+</body>
+</html>
