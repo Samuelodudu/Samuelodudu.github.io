@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>REOS Operations Dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:#0B1120;color:#DFE6EF;display:flex;min-height:100vh}
+::-webkit-scrollbar{width:6px}::-webkit-scrollbar-track{background:#0B1120}::-webkit-scrollbar-thumb{background:#253650;border-radius:3px}
+input,textarea,select{font-family:inherit;background:#0B1120;border:1px solid #253650;border-radius:8px;padding:10px 14px;color:#DFE6EF;font-size:14px;outline:none;width:100%}
+select option{background:#162032}
+textarea{resize:none}
+button{font-family:inherit;cursor:pointer}
+pre{font-family:inherit;white-space:pre-wrap}
+.btn{display:inline-flex;align-items:center;gap:8px;padding:10px 20px;border-radius:8px;font-weight:700;font-size:14px;border:none;background:#C9A84C;color:#0B0600}
+.btn:disabled{opacity:0.6;cursor:not-allowed}
+.btn.ghost{background:transparent;color:#DFE6EF;border:1px solid #253650}
+.card{background:#162032;border:1px solid #253650;border-radius:12px;padding:20px 24px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.75);display:flex;align-items:center;justify-content:center;z-index:999}
+.modal{background:#162032;border:1px solid #253650;border-radius:12px;padding:24px;width:580px;max-height:90vh;overflow-y:auto}
+.lbl{font-size:11px;color:#7A91A8;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;margin-bottom:6px;display:block}
+.badge{padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;letter-spacing:0.04em}
+#sidebar{width:230px;background:#0E1A2D;border-right:1px solid #253650;display:flex;flex-direction:column;flex-shrink:0;position:fixed;top:0;left:0;height:100vh;z-index:100}
+#main{flex:1;display:flex;flex-direction:column;margin-left:230px;min-width:0}
+#topbar{padding:18px 32px;border-bottom:1px solid #253650;display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;background:#0B1120;z-index:50}
+#content{flex:1;padding:28px 32px;overflow-y:auto}
+.nav-btn{display:flex;align-items:center;gap:12px;padding:13px 24px;background:transparent;color:#7A91A8;border:none;border-left:3px solid transparent;width:100%;text-align:left;font-size:14px;font-weight:400}
+.nav-btn.active{background:#1e1800;color:#C9A84C;border-left-color:#C9A84C;font-weight:700}
+.stat-card{background:#162032;border:1px solid #253650;border-radius:12px;padding:14px 20px;cursor:pointer}
+.stat-card.active-filter{border-color:#C9A84C;background:#1e1800}
+.client-row{background:#162032;border:1px solid #253650;border-radius:12px;padding:16px 20px;display:flex;align-items:center;gap:20px;cursor:pointer;margin-bottom:10px}
+.client-row:hover{border-color:#253650;filter:brightness(1.1)}
+.avatar{width:44px;height:44px;border-radius:50%;background:#1e1800;border:2px solid #C9A84C;display:flex;align-items:center;justify-content:center;color:#C9A84C;font-weight:800;font-size:14px;flex-shrink:0}
+.step-num{width:36px;height:36px;border-radius:50%;background:#1e1800;border:2px solid #C9A84C;color:#C9A84C;font-weight:800;font-size:15px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.sop-card{background:#162032;border:1px solid #253650;border-radius:12px;padding:20px 24px;cursor:pointer}
+.sop-card:hover{filter:brightness(1.1)}
+.audit-opt{background:#0B1120;border:1px solid #253650;border-radius:10px;padding:14px 20px;color:#DFE6EF;text-align:left;font-size:14px;width:100%;margin-bottom:10px}
+.audit-opt:hover,.audit-opt.selected{border-color:#C9A84C;color:#C9A84C}
+.progress-bar{height:4px;background:#253650;border-radius:2px;margin-bottom:20px}
+.progress-fill{height:4px;background:#C9A84C;border-radius:2px;transition:width 0.3s}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.full{grid-column:1/-1}
+.icon-btn{background:none;border:none;cursor:pointer;padding:6px;display:inline-flex;align-items:center}
+</style>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<div id="sidebar">
+  <div style="padding:28px 24px 24px">
+    <div style="font-size:24px;font-weight:900;color:#C9A84C;letter-spacing:-0.02em">REOS</div>
+    <div style="font-size:9px;color:#7A91A8;letter-spacing:0.14em;text-transform:uppercase;margin-top:2px">Operations Dashboard</div>
+  </div>
+  <div id="nav" style="display:flex;flex-direction:column;flex:1"></div>
+  <div style="padding:20px 24px;border-top:1px solid #253650">
+    <div style="font-weight:700;color:#DFE6EF;font-size:13px">Samuel Odudu</div>
+    <div style="color:#7A91A8;font-size:12px;margin-top:2px">REOS Consulting</div>
+  </div>
+</div>
+
+<!-- MAIN -->
+<div id="main">
+  <div id="topbar">
+    <div id="page-title" style="font-size:17px;font-weight:700;color:#DFE6EF">Dashboard</div>
+    <div id="topbar-date" style="font-size:13px;color:#7A91A8"></div>
+  </div>
+  <div id="content"></div>
+</div>
+
+<!-- MODAL -->
+<div id="modal" class="modal-overlay" style="display:none">
+  <div class="modal" id="modal-inner"></div>
+</div>
+
+<script>
+// ── CONSTANTS ────────────────────────────────────────────────────────────────
+const A="#C9A84C",BG="#0B1120",CD="#162032",BR="#253650",TX="#DFE6EF",MU="#7A91A8",GN="#4ADE80",WN="#FCD34D",RD="#F87171";
+
+const DEMO_CLIENTS=[
+  {id:1,name:"Adaeze Okonkwo",business:"AO Consulting",project:"Operations Overhaul",status:"Active",deadline:"2025-07-15",email:"adaeze@ao.com",fee:"NGN 350,000",notes:"Phase 2 starts June"},
+  {id:2,name:"Emeka Nwosu",business:"Nwosu Logistics",project:"SOPs & Staff Manual",status:"Completed",deadline:"2025-05-01",email:"emeka@nwosulg.com",fee:"NGN 200,000",notes:"Final report delivered"},
+  {id:3,name:"Chisom Eze",business:"CE Fashion House",project:"Brand Strategy",status:"Pending",deadline:"2025-08-30",email:"chisom@cefashion.ng",fee:"NGN 150,000",notes:"Contract sent, awaiting signature"},
+];
+const DEMO_SOPS=[{id:1,title:"Client Onboarding Process",dept:"Operations",owner:"Samuel Odudu",steps:[
+  {id:1,title:"Send welcome email",desc:"Within 24 hours of the signed contract, send the welcome email template with next steps and access details.",owner:"Samuel Odudu"},
+  {id:2,title:"Schedule kickoff call",desc:"Book a 60-minute kickoff call within the first week to align on goals, deliverables, and timeline.",owner:"Samuel Odudu"},
+  {id:3,title:"Share onboarding questionnaire",desc:"Send the client questionnaire and request completion within 5 business days before the kickoff call.",owner:"Client"}
+]}];
+
+const AUDIT_QS=[
+  {cat:"Client Management",q:"How do you currently track your active clients and projects?",opts:["No system — it's all in my head","Scattered notes and chats","Basic spreadsheet","Organised spreadsheet with regular updates","A dedicated tool or CRM system"]},
+  {cat:"Client Management",q:"How quickly do you typically respond to new leads or inquiries?",opts:["No consistent follow-up","Only when I remember","Within a week","Within 48 hours","Same day with a structured system"]},
+  {cat:"Financial Tracking",q:"How do you track income and outstanding payments?",opts:["I don't track it formally","I recall transactions mentally","Bank statements at month end","Basic spreadsheet","An invoice tracker with live payment status"]},
+  {cat:"Financial Tracking",q:"Do you have a standard, documented pricing structure?",opts:["No — I quote differently every time","Rough estimate I keep in my head","Informal rates I quote verbally","Written rates, not always followed","A clear rate card shared with every client"]},
+  {cat:"Processes & SOPs",q:"Are your core business processes documented anywhere?",opts:["Nothing is documented","A few random notes somewhere","Some processes partially written","Most key processes are documented","Full SOPs with owners and clear standards"]},
+  {cat:"Processes & SOPs",q:"If you were unavailable for a week, could your business keep running?",opts:["Everything would stop completely","Major disruption across the board","Partial operations only","Most things would continue fine","Yes — systems handle it"]},
+  {cat:"Client Communication",q:"How do clients receive updates on their projects?",opts:["They have to ask — no proactive updates","Informally via WhatsApp whenever","Regular but unstructured messages","Scheduled check-ins at agreed intervals","Structured reports with clear status updates"]},
+  {cat:"Client Communication",q:"Do you use formal proposals and contracts for every client?",opts:["No — verbal agreement only","Rarely use any written documents","Basic document used sometimes","Proposal but rarely a contract","Both proposal and signed contract always"]},
+  {cat:"Growth & Pipeline",q:"How consistently are you generating new leads?",opts:["No active lead generation","Occasional referrals only","Some activity but inconsistent","Regular activity but not systematic","Clear pipeline with consistent inbound flow"]},
+  {cat:"Growth & Pipeline",q:"Do you have a defined niche or ideal client profile documented?",opts:["No — I work with anyone who pays","Vague idea I keep in my head","Partly defined, not fully","Mostly clear but not documented","Fully defined, documented, and actively used"]},
+];
+
+// ── STORAGE ──────────────────────────────────────────────────────────────────
+function load(key,fallback){try{const s=localStorage.getItem(key);return s?JSON.parse(s):fallback;}catch{return fallback;}}
+function save(key,val){try{localStorage.setItem(key,JSON.stringify(val));}catch{}}
+let clients=load("reos_clients",DEMO_CLIENTS);
+let sops=load("reos_sops",DEMO_SOPS);
+function saveClients(){save("reos_clients",clients);}
+function saveSops(){save("reos_sops",sops);}
+
+// ── HELPERS ──────────────────────────────────────────────────────────────────
+const el=(tag,attrs={},children=[])=>{
+  const e=document.createElement(tag);
+  Object.entries(attrs).forEach(([k,v])=>{
+    if(k==="style"&&typeof v==="object")Object.assign(e.style,v);
+    else if(k.startsWith("on"))e.addEventListener(k.slice(2).toLowerCase(),v);
+    else e.setAttribute(k,v);
+  });
+  children.forEach(c=>{if(c!=null)e.append(typeof c==="string"?c:c);});
+  return e;
+};
+const h=(tag,style={},children=[])=>el(tag,{style},children);
+const statusColor={Active:[GN,"#052e16"],Pending:[WN,"#1a1200"],Completed:["#818CF8","#0f0b2e"],Paused:[RD,"#1c0808"]};
+function badge(s){const[c,b]=statusColor[s]||statusColor.Active;const e=document.createElement("span");e.className="badge";e.textContent=s.toUpperCase();e.style.color=c;e.style.background=b;return e;}
+function initials(name){return name.split(" ").map(n=>n[0]).join("").slice(0,2).toUpperCase();}
+function closeModal(){document.getElementById("modal").style.display="none";}
+function openModal(content){const m=document.getElementById("modal-inner");m.innerHTML="";m.appendChild(content);document.getElementById("modal").style.display="flex";}
+document.getElementById("modal").addEventListener("click",e=>{if(e.target===document.getElementById("modal"))closeModal();});
+
+// ── PDF ENGINE ────────────────────────────────────────────────────────────────
+function mkPDF({title,subtitle,sections,filename}){
+  const{jsPDF}=window.jspdf;
+  const doc=new jsPDF({orientation:"portrait",unit:"mm",format:"a4"});
+  const PW=210,PH=297,ML=20,MR=20,MT=64,MB=20,CW=PW-ML-MR;
+  const GO=[201,168,76],DK=[11,17,32],D2=[22,32,50],LT=[223,230,239],MD=[122,145,168];
+  let y=MT;
+  const chk=(n=10)=>{if(y+n>PH-MB){doc.addPage();hdrPDF();y=MT;}};
+  const hdrPDF=()=>{
+    doc.setFillColor(...DK);doc.rect(0,0,PW,52,"F");
+    doc.setFillColor(...GO);doc.rect(0,52,PW,2,"F");
+    doc.setTextColor(...GO);doc.setFontSize(22);doc.setFont("helvetica","bold");doc.text("REOS",ML,22);
+    doc.setTextColor(...LT);doc.setFontSize(9);doc.setFont("helvetica","normal");doc.text("OPERATIONS DASHBOARD",ML+24,22);
+    doc.setFontSize(16);doc.setFont("helvetica","bold");doc.setTextColor(...LT);doc.text(title,ML,38);
+    if(subtitle){doc.setFontSize(9);doc.setFont("helvetica","normal");doc.setTextColor(...MD);doc.text(subtitle.slice(0,80),ML,47);}
+    const ds=new Date().toLocaleDateString("en-NG",{year:"numeric",month:"long",day:"numeric"});
+    doc.setTextColor(...MD);doc.setFontSize(8);doc.text(ds,PW-MR-doc.getTextWidth(ds),47);
+  };
+  hdrPDF();
+  for(const s of sections){
+    if(s.type==="heading"){chk(16);doc.setFillColor(...D2);doc.rect(ML,y,CW,9,"F");doc.setFillColor(...GO);doc.rect(ML,y,3,9,"F");doc.setTextColor(...GO);doc.setFontSize(9);doc.setFont("helvetica","bold");doc.text(s.text.toUpperCase(),ML+7,y+6);y+=15;}
+    else if(s.type==="body"){doc.setFontSize(10);const ls=doc.splitTextToSize(s.text,CW);doc.setFont("helvetica","normal");doc.setTextColor(...LT);for(const l of ls){chk(6);doc.text(l,ML,y);y+=5.5;}y+=4;}
+    else if(s.type==="step"){chk(28);doc.setFillColor(...D2);doc.roundedRect(ML,y,CW,2,0,0,"F");doc.setFillColor(...GO);doc.circle(ML+6,y+8,5,"F");doc.setTextColor(...DK);doc.setFontSize(10);doc.setFont("helvetica","bold");doc.text(String(s.num),ML+6,y+11,{align:"center"});doc.setTextColor(...LT);doc.setFontSize(11);doc.text(s.title,ML+15,y+9);let dy=y+16;if(s.desc){const ls=doc.splitTextToSize(s.desc,CW-16);doc.setFont("helvetica","normal");doc.setFontSize(9);doc.setTextColor(...MD);for(const l of ls){chk(5);doc.text(l,ML+15,dy);dy+=4.5;}}if(s.owner){doc.setTextColor(...GO);doc.setFontSize(8);doc.text("Owner: "+s.owner,ML+15,dy+2);dy+=6;}y=dy+6;}
+    else if(s.type==="kv"){chk(8);doc.setFontSize(9);doc.setFont("helvetica","normal");doc.setTextColor(...MD);doc.text(s.key+":",ML,y);doc.setTextColor(...LT);doc.setFont("helvetica","bold");doc.text(s.value||"—",ML+42,y);y+=7;}
+    else if(s.type==="spacer"){y+=s.h||8;}
+  }
+  const tp=doc.getNumberOfPages();
+  for(let p=1;p<=tp;p++){doc.setPage(p);doc.setFillColor(...D2);doc.rect(0,PH-12,PW,12,"F");doc.setTextColor(...MD);doc.setFontSize(7);doc.setFont("helvetica","normal");doc.text("REOS Operations Dashboard  ·  Confidential",ML,PH-4.5);doc.text("Page "+p+" of "+tp,PW-MR,PH-4.5,{align:"right"});}
+  doc.save(filename+".pdf");
+}
+
+// ── NAVIGATION ────────────────────────────────────────────────────────────────
+const pages={home:"Dashboard",clients:"Client Manager",proposals:"Proposal Generator",audit:"Ops Audit Tool",sops:"SOP Builder"};
+const navItems=[
+  {id:"home",label:"Dashboard",svg:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>'},
+  {id:"clients",label:"Client Manager",svg:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>'},
+  {id:"proposals",label:"Proposals",svg:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>'},
+  {id:"audit",label:"Ops Audit",svg:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>'},
+  {id:"sops",label:"SOP Builder",svg:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>'},
+];
+
+let currentPage="home";
+function buildNav(){
+  const nav=document.getElementById("nav");
+  nav.innerHTML="";
+  navItems.forEach(({id,label,svg})=>{
+    const btn=document.createElement("button");
+    btn.className="nav-btn"+(id===currentPage?" active":"");
+    btn.innerHTML=svg+" "+label;
+    btn.addEventListener("click",()=>navigate(id));
+    nav.appendChild(btn);
+  });
+}
+function navigate(page){
+  currentPage=page;
+  document.getElementById("page-title").textContent=pages[page];
+  buildNav();
+  renderPage(page);
+}
+function renderPage(page){
+  const c=document.getElementById("content");
+  c.innerHTML="";
+  if(page==="home")c.appendChild(renderHome());
+  else if(page==="clients")c.appendChild(renderClients());
+  else if(page==="proposals")c.appendChild(renderProposals());
+  else if(page==="audit")c.appendChild(renderAudit());
+  else if(page==="sops")c.appendChild(renderSOPs());
+}
+
+// ── HOME ──────────────────────────────────────────────────────────────────────
+function renderHome(){
+  const active=clients.filter(c=>c.status==="Active").length;
+  const done=clients.filter(c=>c.status==="Completed").length;
+  const div=document.createElement("div");
+  div.style.display="flex";div.style.flexDirection="column";div.style.gap="28px";
+  div.innerHTML=`
+    <div>
+      <div style="font-size:26px;font-weight:800;color:${TX};margin-bottom:4px">Good day, Samuel 👋</div>
+      <div style="color:${MU};font-size:15px">Here's a snapshot of your operations today.</div>
+    </div>
+    <div class="grid4">
+      <div class="card"><div style="font-size:11px;color:${MU};text-transform:uppercase;letter-spacing:0.06em">Total Clients</div><div style="font-size:36px;font-weight:800;color:${TX}">${clients.length}</div><div style="font-size:12px;color:${MU}">All time</div></div>
+      <div class="card"><div style="font-size:11px;color:${MU};text-transform:uppercase;letter-spacing:0.06em">Active Projects</div><div style="font-size:36px;font-weight:800;color:${A}">${active}</div><div style="font-size:12px;color:${MU}">In progress</div></div>
+      <div class="card"><div style="font-size:11px;color:${MU};text-transform:uppercase;letter-spacing:0.06em">Completed</div><div style="font-size:36px;font-weight:800;color:${TX}">${done}</div><div style="font-size:12px;color:${MU}">Projects done</div></div>
+      <div class="card"><div style="font-size:11px;color:${MU};text-transform:uppercase;letter-spacing:0.06em">SOPs Built</div><div style="font-size:36px;font-weight:800;color:${TX}">${sops.length}</div><div style="font-size:12px;color:${MU}">Documented</div></div>
+    </div>
+    <div style="font-size:15px;font-weight:700;color:${TX}">Modules</div>
+    <div class="grid2">
+      ${[
+        {id:"clients",title:"Client Manager",desc:"Track all clients, projects, deadlines, and fees in one place.",icon:"👥"},
+        {id:"proposals",title:"Proposal Generator",desc:"Generate AI proposals and export them as branded PDFs instantly.",icon:"📄"},
+        {id:"audit",title:"Ops Audit Tool",desc:"Answer 10 questions and receive a personalised AI operations report.",icon:"🔍"},
+        {id:"sops",title:"SOP Builder",desc:"Document your processes and export your operations manual as PDF.",icon:"📚"},
+      ].map(m=>`<div class="card" style="cursor:pointer" onclick="navigate('${m.id}')">
+        <div style="font-size:28px;margin-bottom:14px">${m.icon}</div>
+        <div style="font-weight:700;color:${TX};font-size:16px;margin-bottom:6px">${m.title}</div>
+        <div style="color:${MU};font-size:13px;line-height:1.7;margin-bottom:20px">${m.desc}</div>
+        <div style="color:${A};font-size:13px;font-weight:700">Open module →</div>
+      </div>`).join("")}
+    </div>`;
+  return div;
+}
+
+// ── CLIENTS ───────────────────────────────────────────────────────────────────
+let clientFilter="All";
+function renderClients(){
+  const div=document.createElement("div");
+  div.style.display="flex";div.style.flexDirection="column";div.style.gap="24px";
+  div.appendChild(renderClientStats());
+  const header=document.createElement("div");
+  header.style.cssText="display:flex;justify-content:space-between;align-items:center";
+  header.innerHTML=`<div style="font-size:16px;font-weight:700;color:${TX}">Client List</div>`;
+  const addBtn=document.createElement("button");
+  addBtn.className="btn";addBtn.innerHTML="+ Add Client";
+  addBtn.addEventListener("click",()=>showAddClient());
+  header.appendChild(addBtn);
+  div.appendChild(header);
+  div.appendChild(renderClientList());
+  return div;
+}
+function renderClientStats(){
+  const grid=document.createElement("div");grid.className="grid4";
+  ["All","Active","Pending","Completed"].forEach(s=>{
+    const count=s==="All"?clients.length:clients.filter(c=>c.status===s).length;
+    const card=document.createElement("div");
+    card.className="stat-card"+(clientFilter===s?" active-filter":"");
+    card.innerHTML=`<div style="font-size:26px;font-weight:800;color:${clientFilter===s?A:TX}">${count}</div><div style="font-size:12px;color:${MU};margin-top:2px">${s==="All"?"Total Clients":s}</div>`;
+    card.addEventListener("click",()=>{clientFilter=s;navigate("clients");});
+    grid.appendChild(card);
+  });
+  return grid;
+}
+function renderClientList(){
+  const div=document.createElement("div");
+  const filtered=clientFilter==="All"?clients:clients.filter(c=>c.status===clientFilter);
+  if(filtered.length===0){div.innerHTML=`<div class="card" style="text-align:center;color:${MU};padding:40px 0">No clients yet.</div>`;return div;}
+  filtered.forEach(c=>{
+    const row=document.createElement("div");row.className="client-row";
+    const av=document.createElement("div");av.className="avatar";av.textContent=initials(c.name);
+    const info=document.createElement("div");info.style.cssText="flex:1;min-width:0";
+    info.innerHTML=`<div style="font-weight:700;color:${TX}">${c.name}</div><div style="color:${MU};font-size:13px">${c.business} · ${c.project}</div>`;
+    const right=document.createElement("div");right.style.cssText="text-align:right;flex-shrink:0";
+    right.innerHTML=`<div style="color:${A};font-weight:700;font-size:14px;margin-bottom:4px">${c.fee}</div>`;
+    right.appendChild(badge(c.status));
+    const date=document.createElement("div");date.style.cssText=`color:${MU};font-size:13px;flex-shrink:0`;date.textContent=c.deadline||"—";
+    const del=document.createElement("button");del.className="icon-btn";del.style.color=RD;
+    del.innerHTML='<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>';
+    del.addEventListener("click",e=>{e.stopPropagation();clients=clients.filter(x=>x.id!==c.id);saveClients();navigate("clients");});
+    row.addEventListener("click",()=>showClientDetail(c));
+    row.append(av,info,right,date,del);
+    div.appendChild(row);
+  });
+  return div;
+}
+function showAddClient(){
+  const form=document.createElement("div");
+  form.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px"><div style="font-size:18px;font-weight:700;color:${TX}">Add New Client</div><button class="icon-btn" id="close-modal" style="color:${MU}">✕</button></div>
+  <div class="form-grid">
+    <div><span class="lbl">Client Full Name</span><input id="f-name" placeholder="Client Full Name"/></div>
+    <div><span class="lbl">Business Name</span><input id="f-business" placeholder="Business Name"/></div>
+    <div class="full"><span class="lbl">Project / Service</span><input id="f-project" placeholder="Project / Service"/></div>
+    <div><span class="lbl">Email Address</span><input id="f-email" type="email" placeholder="Email Address"/></div>
+    <div><span class="lbl">Project Fee</span><input id="f-fee" placeholder="e.g. NGN 250,000"/></div>
+    <div><span class="lbl">Deadline</span><input id="f-deadline" type="date"/></div>
+    <div><span class="lbl">Status</span><select id="f-status"><option>Active</option><option>Pending</option><option>Completed</option><option>Paused</option></select></div>
+    <div class="full"><span class="lbl">Notes</span><textarea id="f-notes" rows="3" placeholder="Any notes..."></textarea></div>
+  </div>
+  <div style="display:flex;gap:12px;justify-content:flex-end;margin-top:24px">
+    <button class="btn ghost" id="cancel-btn">Cancel</button>
+    <button class="btn" id="save-client-btn">Save Client</button>
+  </div>`;
+  openModal(form);
+  document.getElementById("close-modal").addEventListener("click",closeModal);
+  document.getElementById("cancel-btn").addEventListener("click",closeModal);
+  document.getElementById("save-client-btn").addEventListener("click",()=>{
+    const name=document.getElementById("f-name").value.trim();
+    if(!name)return;
+    clients.push({id:Date.now(),name,business:document.getElementById("f-business").value,project:document.getElementById("f-project").value,email:document.getElementById("f-email").value,fee:document.getElementById("f-fee").value,deadline:document.getElementById("f-deadline").value,status:document.getElementById("f-status").value,notes:document.getElementById("f-notes").value});
+    saveClients();closeModal();navigate("clients");
+  });
+}
+function showClientDetail(c){
+  const m=document.createElement("div");
+  m.innerHTML=`<div style="display:flex;justify-content:space-between;margin-bottom:20px"><div><div style="font-size:20px;font-weight:800;color:${TX}">${c.name}</div><div style="color:${MU};font-size:14px">${c.business}</div></div><button class="icon-btn" onclick="closeModal()" style="color:${MU}">✕</button></div>
+  <div class="grid2" style="margin-bottom:16px">
+    ${[["Project",c.project],["Fee",c.fee],["Deadline",c.deadline||"—"],["Email",c.email||"—"]].map(([l,v])=>`<div style="background:${BG};border-radius:8px;padding:12px 16px"><div style="font-size:11px;color:${MU};text-transform:uppercase;margin-bottom:4px">${l}</div><div style="color:${TX};font-weight:600;font-size:14px">${v}</div></div>`).join("")}
+  </div>
+  <div style="display:flex;justify-content:space-between;align-items:center">
+    <span class="badge" style="color:${statusColor[c.status]?.[0]};background:${statusColor[c.status]?.[1]}">${c.status.toUpperCase()}</span>
+    ${c.notes?`<div style="color:${MU};font-size:13px;font-style:italic">${c.notes}</div>`:""}
+  </div>`;
+  openModal(m);
+}
+
+// ── PROPOSALS ─────────────────────────────────────────────────────────────────
+function renderProposals(){
+  const div=document.createElement("div");
+  div.style.cssText="display:grid;grid-template-columns:1fr 1fr;gap:24px;align-items:start";
+  div.appendChild(renderProposalForm());
+  const out=document.createElement("div");out.className="card";out.id="proposal-output";
+  out.innerHTML=`<div style="font-size:16px;font-weight:700;color:${TX};margin-bottom:20px">Generated Proposal</div><div style="text-align:center;padding:60px 20px;color:${MU}"><div style="font-size:40px;margin-bottom:16px">📄</div><div style="font-size:15px">Fill in the details and click Generate.</div></div>`;
+  div.appendChild(out);
+  return div;
+}
+function renderProposalForm(){
+  const card=document.createElement("div");card.className="card";
+  card.innerHTML=`<div style="font-size:16px;font-weight:700;color:${TX};margin-bottom:20px">Proposal Details</div>
+  <div class="form-grid">
+    <div><span class="lbl">Client Name</span><input id="p-client" placeholder="Client Name"/></div>
+    <div><span class="lbl">Client Business</span><input id="p-business" placeholder="Client Business"/></div>
+    <div class="full"><span class="lbl">Service / Package Title</span><input id="p-title" placeholder="Service / Package Title"/></div>
+    <div class="full"><span class="lbl">Scope of Work</span><textarea id="p-scope" rows="3" placeholder="Scope of Work"></textarea></div>
+    <div><span class="lbl">Timeline</span><input id="p-timeline" placeholder="e.g. 4 weeks"/></div>
+    <div><span class="lbl">Investment Amount</span><input id="p-amount" placeholder="e.g. NGN 350,000"/></div>
+    <div class="full"><span class="lbl">Payment Terms</span><input id="p-terms" value="50% upfront, 50% on completion"/></div>
+    <div><span class="lbl">Your Name</span><input id="p-yourname" value="Samuel Odudu"/></div>
+    <div><span class="lbl">Your Business</span><input id="p-yourbiz" value="REOS Consulting"/></div>
+  </div>
+  <button class="btn" id="gen-btn" style="width:100%;justify-content:center;margin-top:20px">📄 Generate Proposal</button>`;
+  card.querySelector("#gen-btn").addEventListener("click",generateProposal);
+  return card;
+}
+async function generateProposal(){
+  const btn=document.getElementById("gen-btn");
+  const client=document.getElementById("p-client").value.trim();
+  const title=document.getElementById("p-title").value.trim();
+  if(!client||!title)return;
+  btn.textContent="Generating...";btn.disabled=true;
+  try{
+    const res=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:1000,system:"You are a professional business proposal writer for a Nigerian consulting firm. Write formal, confident proposals. Use UPPERCASE section headers followed by a colon. No markdown, no asterisks. Under 600 words.",messages:[{role:"user",content:`Write a professional consulting proposal:\nClient: ${client} (${document.getElementById("p-business").value})\nService: ${title}\nScope: ${document.getElementById("p-scope").value}\nTimeline: ${document.getElementById("p-timeline").value}\nFee: ${document.getElementById("p-amount").value}\nPayment Terms: ${document.getElementById("p-terms").value}\nPrepared by: ${document.getElementById("p-yourname").value}, ${document.getElementById("p-yourbiz").value}`}]})});
+    const data=await res.json();
+    const text=data.content?.map(b=>b.text||"").join("")||"Could not generate. Please try again.";
+    showProposalResult(text,{client,biz:document.getElementById("p-business").value,title,timeline:document.getElementById("p-timeline").value,amount:document.getElementById("p-amount").value,terms:document.getElementById("p-terms").value,yourName:document.getElementById("p-yourname").value,yourBiz:document.getElementById("p-yourbiz").value});
+  }catch{showProposalResult("Network error. Please check your connection and try again.",{client,title});}
+  btn.textContent="📄 Generate Proposal";btn.disabled=false;
+}
+function showProposalResult(text,form){
+  const out=document.getElementById("proposal-output");
+  out.innerHTML="";
+  const header=document.createElement("div");header.style.cssText="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px";
+  header.innerHTML=`<div style="font-size:16px;font-weight:700;color:${TX}">Generated Proposal</div>`;
+  const btns=document.createElement("div");btns.style.cssText="display:flex;gap:8px";
+  const copyBtn=document.createElement("button");copyBtn.className="btn ghost";copyBtn.style.cssText="padding:6px 14px;font-size:12px";copyBtn.textContent="📋 Copy";
+  copyBtn.addEventListener("click",()=>{navigator.clipboard.writeText(text);copyBtn.textContent="✓ Copied";setTimeout(()=>copyBtn.textContent="📋 Copy",2000);});
+  const pdfBtn=document.createElement("button");pdfBtn.className="btn ghost";pdfBtn.style.cssText="padding:6px 14px;font-size:12px";pdfBtn.textContent="⬇ Export PDF";
+  pdfBtn.addEventListener("click",()=>{
+    const lines=text.split("\n"),secs=[];let buf=[];
+    const fl=()=>{if(buf.length){secs.push({type:"body",text:buf.join("\n")});buf=[];}};
+    for(const l of lines){const t=l.trim();if(!t){buf.push("");continue;}if(/^[A-Z][A-Z\s&\/]{3,}:/.test(t)){fl();secs.push({type:"heading",text:t.replace(/:$/,"")});}else{buf.push(t);}}fl();
+    mkPDF({title:form.title||"Consulting Proposal",subtitle:"For "+form.client+(form.biz?" · "+form.biz:"")+"  ·  By "+form.yourName+", "+form.yourBiz,sections:[{type:"heading",text:"Engagement Details"},{type:"kv",key:"Client",value:form.client+(form.biz?" · "+form.biz:"")},{type:"kv",key:"Service",value:form.title},form.timeline&&{type:"kv",key:"Timeline",value:form.timeline},form.amount&&{type:"kv",key:"Investment",value:form.amount},form.terms&&{type:"kv",key:"Payment Terms",value:form.terms},{type:"spacer",h:6},...secs].filter(Boolean),filename:"REOS-Proposal-"+(form.client||"Client").replace(/\s+/g,"-")});
+  });
+  btns.append(copyBtn,pdfBtn);header.appendChild(btns);
+  const pre=document.createElement("pre");pre.style.cssText=`color:${TX};font-size:13px;line-height:1.9`;pre.textContent=text;
+  out.append(header,pre);
+}
+
+// ── AUDIT ─────────────────────────────────────────────────────────────────────
+let auditState={step:"intro",qIdx:0,answers:{},result:""};
+function renderAudit(){
+  const div=document.createElement("div");
+  if(auditState.step==="intro"){
+    div.innerHTML=`<div style="max-width:640px;margin:0 auto"><div class="card" style="text-align:center;padding:48px 40px">
+      <div style="font-size:44px;margin-bottom:16px">🔍</div>
+      <div style="font-size:24px;font-weight:800;color:${TX};margin-bottom:12px">Business Operations Audit</div>
+      <div style="color:${MU};font-size:15px;line-height:1.8;margin-bottom:32px">10 questions. 5 minutes. A precise picture of where your operations stand — and exactly what to fix first.</div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:32px">
+        ${["Client Management","Financial Tracking","Processes & SOPs","Communication","Growth & Pipeline","AI Report + PDF"].map(t=>`<div style="background:${BG};border-radius:8px;padding:12px;font-size:12px;color:${MU};border:1px solid ${BR}">${t}</div>`).join("")}
+      </div>
+      <button class="btn" id="start-audit" style="padding:14px 48px;font-size:16px">Begin Audit →</button>
+    </div></div>`;
+    div.querySelector("#start-audit").addEventListener("click",()=>{auditState={step:"questions",qIdx:0,answers:{},result:""};navigate("audit");});
+  } else if(auditState.step==="loading"){
+    div.innerHTML=`<div style="max-width:640px;margin:0 auto" class="card"><div style="text-align:center;padding:80px 40px"><div style="font-size:40px;margin-bottom:16px">🔍</div><div style="font-size:18px;font-weight:700;color:${TX};margin-bottom:8px">Analysing your business...</div><div style="color:${MU}">REOS AI is preparing your report.</div></div></div>`;
+  } else if(auditState.step==="questions"){
+    const q=AUDIT_QS[auditState.qIdx];
+    const wrap=document.createElement("div");wrap.style.cssText="max-width:680px;margin:0 auto;display:flex;flex-direction:column;gap:20px";
+    wrap.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center"><div style="font-size:12px;color:${A};font-weight:700;letter-spacing:0.08em;text-transform:uppercase">${q.cat}</div><div style="font-size:13px;color:${MU}">${auditState.qIdx+1} / ${AUDIT_QS.length}</div></div>
+    <div class="progress-bar"><div class="progress-fill" style="width:${(auditState.qIdx/AUDIT_QS.length)*100}%"></div></div>
+    <div class="card" style="padding:32px"><div style="font-size:19px;font-weight:700;color:${TX};line-height:1.5;margin-bottom:28px">${q.q}</div><div id="opts"></div></div>
+    ${auditState.qIdx>0?`<button class="btn ghost" id="back-btn" style="align-self:flex-start">← Back</button>`:""}`;
+    wrap.querySelector("#opts")&&q.opts.forEach((opt,i)=>{
+      const btn=document.createElement("button");btn.className="audit-opt"+(auditState.answers[auditState.qIdx]===i?" selected":"");
+      btn.innerHTML=`<span style="color:${MU};font-size:12px;margin-right:10px">${i+1}.</span>${opt}`;
+      btn.addEventListener("click",()=>auditPick(i));
+      wrap.querySelector("#opts").appendChild(btn);
+    });
+    if(auditState.qIdx>0)wrap.querySelector("#back-btn")?.addEventListener("click",()=>{auditState.qIdx--;navigate("audit");});
+    div.appendChild(wrap);
+  } else if(auditState.step==="results"){
+    const wrap=document.createElement("div");wrap.style.cssText="max-width:700px;margin:0 auto;display:flex;flex-direction:column;gap:20px";
+    const header=document.createElement("div");header.style.cssText="display:flex;justify-content:space-between;align-items:center";
+    header.innerHTML=`<div style="font-size:20px;font-weight:800;color:${TX}">Your Operations Report</div>`;
+    const btns=document.createElement("div");btns.style.cssText="display:flex;gap:10px";
+    const pdfBtn=document.createElement("button");pdfBtn.className="btn ghost";pdfBtn.style.fontSize="13px";pdfBtn.textContent="⬇ Export PDF";
+    pdfBtn.addEventListener("click",()=>{
+      const lines=auditState.result.split("\n"),secs=[];let buf=[];
+      const fl=()=>{if(buf.length){secs.push({type:"body",text:buf.join("\n")});buf=[];}};
+      for(const l of lines){const t=l.trim();if(!t){buf.push("");continue;}if(/^(OVERALL SCORE|YOUR 3|3 IMMEDIATE)/i.test(t)){fl();secs.push({type:"heading",text:t});}else{buf.push(t);}}fl();
+      mkPDF({title:"Operations Audit Report",subtitle:"Samuel Odudu · REOS Consulting · "+new Date().toLocaleDateString("en-NG"),sections:[{type:"heading",text:"Audit Results"},...secs,{type:"spacer",h:10},{type:"heading",text:"Your Responses"},...AUDIT_QS.map((q,i)=>({type:"kv",key:q.cat.slice(0,20),value:q.opts[auditState.answers[i]??0]}))],filename:"REOS-Ops-Audit-Report"});
+    });
+    const retakeBtn=document.createElement("button");retakeBtn.className="btn ghost";retakeBtn.style.fontSize="13px";retakeBtn.textContent="Retake";
+    retakeBtn.addEventListener("click",()=>{auditState={step:"intro",qIdx:0,answers:{},result:""};navigate("audit");});
+    btns.append(pdfBtn,retakeBtn);header.appendChild(btns);
+    const resultCard=document.createElement("div");resultCard.className="card";resultCard.style.padding="32px";
+    const pre=document.createElement("pre");pre.style.cssText=`color:${TX};font-size:14px;line-height:1.9`;pre.textContent=auditState.result;
+    resultCard.appendChild(pre);
+    const tip=document.createElement("div");tip.className="card";tip.style.cssText=`background:#1a1400;border-color:${A}`;
+    tip.innerHTML=`<div style="font-size:14px;color:${A};font-weight:700;margin-bottom:6px">Ready to close these gaps?</div><div style="font-size:13px;color:${MU};line-height:1.7">Use the SOP Builder to document your processes, and the Client Manager to get your client tracking in order.</div>`;
+    wrap.append(header,resultCard,tip);
+    div.appendChild(wrap);
+  }
+  return div;
+}
+async function auditPick(i){
+  auditState.answers[auditState.qIdx]=i;
+  if(auditState.qIdx<AUDIT_QS.length-1){auditState.qIdx++;navigate("audit");return;}
+  auditState.step="loading";navigate("audit");
+  try{
+    const fmt=AUDIT_QS.map((q,j)=>`Q${j+1} [${q.cat}]: ${q.q}\nAnswer: ${q.opts[auditState.answers[j]??0]}`).join("\n\n");
+    const res=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:1000,system:"You are an expert Nigerian business operations consultant. Format: OVERALL SCORE: X/100\n[one-line verdict]\n\nYOUR 3 BIGGEST GAPS:\n1.\n2.\n3.\n\n3 IMMEDIATE ACTIONS:\n1.\n2.\n3.\n\nNo markdown. Under 400 words. Direct and specific.",messages:[{role:"user",content:"Business audit:\n\n"+fmt}]})});
+    const data=await res.json();
+    auditState.result=data.content?.map(b=>b.text||"").join("")||"Could not generate.";
+  }catch{auditState.result="Error generating report. Please check your connection.";}
+  auditState.step="results";navigate("audit");
+}
+
+// ── SOPs ──────────────────────────────────────────────────────────────────────
+let sopView="list",sopSelected=null,sopDraft={title:"",dept:"",owner:"Samuel Odudu",steps:[]};
+function renderSOPs(){
+  const div=document.createElement("div");
+  if(sopView==="list"){
+    const header=document.createElement("div");header.style.cssText="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px";
+    header.innerHTML=`<div style="font-size:16px;font-weight:700;color:${TX}">Standard Operating Procedures (${sops.length})</div>`;
+    const addBtn=document.createElement("button");addBtn.className="btn";addBtn.textContent="+ Create SOP";
+    addBtn.addEventListener("click",()=>{sopDraft={title:"",dept:"",owner:"Samuel Odudu",steps:[]};sopView="builder";navigate("sops");});
+    header.appendChild(addBtn);div.appendChild(header);
+    if(sops.length===0){div.innerHTML+=`<div style="text-align:center;color:${MU};padding:48px 0">No SOPs yet. Create your first one.</div>`;return div;}
+    const grid=document.createElement("div");grid.style.cssText="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px";
+    sops.forEach(s=>{
+      const card=document.createElement("div");card.className="sop-card";
+      card.innerHTML=`<div style="display:flex;justify-content:space-between;margin-bottom:14px"><div style="background:#1e1800;border-radius:6px;padding:4px 10px;font-size:11px;color:${A};font-weight:700">SOP</div><button class="icon-btn del-sop" style="color:${MU}">🗑</button></div>
+      <div style="font-weight:700;color:${TX};font-size:16px;margin-bottom:4px">${s.title}</div>
+      <div style="color:${MU};font-size:13px;margin-bottom:16px">${s.dept} · ${s.owner}</div>
+      <div style="display:flex;justify-content:space-between;align-items:center"><div style="color:${MU};font-size:12px">${s.steps.length} steps</div><div style="color:${A};font-size:12px;font-weight:700">👁 View & Export</div></div>`;
+      card.querySelector(".del-sop").addEventListener("click",e=>{e.stopPropagation();sops=sops.filter(x=>x.id!==s.id);saveSops();navigate("sops");});
+      card.addEventListener("click",()=>{sopSelected=s;sopView="viewer";navigate("sops");});
+      grid.appendChild(card);
+    });
+    div.appendChild(grid);
+  } else if(sopView==="builder"){
+    div.style.cssText="max-width:720px;margin:0 auto;display:flex;flex-direction:column;gap:20px";
+    const header=document.createElement("div");header.style.cssText="display:flex;justify-content:space-between;align-items:center";
+    header.innerHTML=`<div style="font-size:18px;font-weight:700;color:${TX}">Build New SOP</div>`;
+    const backBtn=document.createElement("button");backBtn.className="btn ghost";backBtn.style.fontSize="13px";backBtn.textContent="← Back";
+    backBtn.addEventListener("click",()=>{sopView="list";navigate("sops");});
+    header.appendChild(backBtn);div.appendChild(header);
+    const detailCard=document.createElement("div");detailCard.className="card";
+    detailCard.innerHTML=`<div style="font-size:14px;font-weight:700;color:${TX};margin-bottom:16px">SOP Details</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px">
+      <div><span class="lbl">SOP Title</span><input id="s-title" placeholder="SOP Title" value="${sopDraft.title}"/></div>
+      <div><span class="lbl">Department</span><input id="s-dept" placeholder="Department" value="${sopDraft.dept}"/></div>
+      <div><span class="lbl">Owner</span><input id="s-owner" placeholder="Owner" value="${sopDraft.owner}"/></div>
+    </div>`;
+    div.appendChild(detailCard);
+    const stepsCard=document.createElement("div");stepsCard.className="card";
+    const stepsHeader=document.createElement("div");stepsHeader.style.cssText=`font-size:14px;font-weight:700;color:${TX};margin-bottom:16px`;stepsHeader.textContent=`Process Steps (${sopDraft.steps.length})`;
+    stepsCard.appendChild(stepsHeader);
+    const stepsList=document.createElement("div");stepsList.id="steps-list";
+    sopDraft.steps.forEach((s,i)=>{
+      const row=document.createElement("div");row.style.cssText=`background:${BG};border-radius:8px;padding:14px 16px;margin-bottom:10px;display:flex;gap:16px;align-items:flex-start`;
+      const num=document.createElement("div");num.style.cssText=`width:28px;height:28px;border-radius:50%;background:#1e1800;border:1px solid ${A};color:${A};font-weight:800;font-size:13px;display:flex;align-items:center;justify-content:center;flex-shrink:0`;num.textContent=i+1;
+      const info=document.createElement("div");info.style.flex="1";
+      info.innerHTML=`<div style="font-weight:700;color:${TX};font-size:14px">${s.title}</div><div style="color:${MU};font-size:13px;margin-top:2px;line-height:1.6">${s.desc}</div>${s.owner?`<div style="color:${A};font-size:12px;margin-top:4px">Owner: ${s.owner}</div>`:""}`;
+      const del=document.createElement("button");del.className="icon-btn";del.style.color=RD;del.textContent="✕";
+      del.addEventListener("click",()=>{sopDraft.steps.splice(i,1);sopView="builder";navigate("sops");});
+      row.append(num,info,del);stepsList.appendChild(row);
+    });
+    stepsCard.appendChild(stepsList);
+    const addStepBox=document.createElement("div");addStepBox.style.cssText=`background:${BG};border-radius:8px;padding:16px;border:1px dashed ${BR}`;
+    addStepBox.innerHTML=`<div style="font-size:13px;color:${MU};font-weight:700;margin-bottom:10px">Add Step</div>
+    <div style="display:flex;flex-direction:column;gap:10px">
+      <input id="ns-title" placeholder="Step title"/>
+      <textarea id="ns-desc" rows="2" placeholder="Step description / instructions"></textarea>
+      <input id="ns-owner" placeholder="Owner / responsible person"/>
+      <button class="btn" id="add-step-btn" style="align-self:flex-start;padding:8px 16px;font-size:13px">+ Add Step</button>
+    </div>`;
+    stepsCard.appendChild(addStepBox);
+    addStepBox.querySelector("#add-step-btn").addEventListener("click",()=>{
+      sopDraft.title=document.getElementById("s-title").value;sopDraft.dept=document.getElementById("s-dept").value;sopDraft.owner=document.getElementById("s-owner").value;
+      const t=document.getElementById("ns-title").value.trim();if(!t)return;
+      sopDraft.steps.push({id:Date.now(),title:t,desc:document.getElementById("ns-desc").value,owner:document.getElementById("ns-owner").value});
+      sopView="builder";navigate("sops");
+    });
+    div.appendChild(stepsCard);
+    const footer=document.createElement("div");footer.style.cssText="display:flex;justify-content:flex-end;gap:12px";
+    const cancelBtn=document.createElement("button");cancelBtn.className="btn ghost";cancelBtn.textContent="Cancel";cancelBtn.addEventListener("click",()=>{sopView="list";navigate("sops");});
+    const saveBtn=document.createElement("button");saveBtn.className="btn";saveBtn.textContent="📚 Save SOP";
+    saveBtn.addEventListener("click",()=>{
+      const title=document.getElementById("s-title").value.trim();if(!title)return;
+      sops.push({id:Date.now(),title,dept:document.getElementById("s-dept").value,owner:document.getElementById("s-owner").value,steps:sopDraft.steps});
+      saveSops();sopDraft={title:"",dept:"",owner:"Samuel Odudu",steps:[]};sopView="list";navigate("sops");
+    });
+    footer.append(cancelBtn,saveBtn);div.appendChild(footer);
+  } else if(sopView==="viewer"&&sopSelected){
+    div.style.cssText="max-width:720px;margin:0 auto;display:flex;flex-direction:column;gap:20px";
+    const header=document.createElement("div");header.style.cssText="display:flex;justify-content:space-between;align-items:center";
+    const titleBlock=document.createElement("div");titleBlock.innerHTML=`<div style="font-size:22px;font-weight:800;color:${TX}">${sopSelected.title}</div><div style="color:${MU};font-size:13px;margin-top:2px">${sopSelected.dept} · Owner: ${sopSelected.owner} · ${sopSelected.steps.length} steps</div>`;
+    const btns=document.createElement("div");btns.style.cssText="display:flex;gap:10px";
+    const pdfBtn=document.createElement("button");pdfBtn.className="btn ghost";pdfBtn.style.fontSize="13px";pdfBtn.textContent="⬇ Export PDF";
+    pdfBtn.addEventListener("click",()=>{
+      mkPDF({title:sopSelected.title,subtitle:(sopSelected.dept?sopSelected.dept+"  ·  ":"")+"Owner: "+sopSelected.owner+"  ·  "+sopSelected.steps.length+" steps",sections:[{type:"heading",text:"SOP Information"},{type:"kv",key:"Department",value:sopSelected.dept||"General"},{type:"kv",key:"Owner",value:sopSelected.owner},{type:"kv",key:"Total Steps",value:String(sopSelected.steps.length)},{type:"spacer",h:8},{type:"heading",text:"Process Steps"},...sopSelected.steps.map((s,i)=>({type:"step",num:i+1,title:s.title,desc:s.desc,owner:s.owner}))],filename:"REOS-SOP-"+sopSelected.title.replace(/\s+/g,"-")});
+    });
+    const backBtn=document.createElement("button");backBtn.className="btn ghost";backBtn.style.fontSize="13px";backBtn.textContent="← Back";
+    backBtn.addEventListener("click",()=>{sopView="list";navigate("sops");});
+    btns.append(pdfBtn,backBtn);header.append(titleBlock,btns);div.appendChild(header);
+    sopSelected.steps.forEach((s,i)=>{
+      const row=document.createElement("div");row.className="card";row.style.cssText="display:flex;gap:20px;align-items:flex-start";
+      const num=document.createElement("div");num.className="step-num";num.textContent=i+1;
+      const info=document.createElement("div");info.style.flex="1";
+      info.innerHTML=`<div style="font-weight:700;color:${TX};font-size:15px;margin-bottom:6px">${s.title}</div><div style="color:${MU};font-size:14px;line-height:1.7">${s.desc}</div>${s.owner?`<div style="color:${A};font-size:12px;margin-top:10px;font-weight:600">Owner: ${s.owner}</div>`:""}`;
+      row.append(num,info);div.appendChild(row);
+    });
+  }
+  return div;
+}
+
+// ── INIT ──────────────────────────────────────────────────────────────────────
+document.getElementById("topbar-date").textContent=new Date().toLocaleDateString("en-NG",{weekday:"long",year:"numeric",month:"long",day:"numeric"});
+buildNav();
+renderPage("home");
+</script>
+</body>
+</html>
